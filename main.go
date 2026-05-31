@@ -8,6 +8,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -26,6 +28,7 @@ type Button struct {
 }
 
 type AudioTrack struct {
+	Name string  `json:"name"`
 	URL  string  `json:"url"`
 	Loop bool    `json:"loop"`
 	X    float64 `json:"x"`
@@ -186,6 +189,7 @@ func main() {
 	http.HandleFunc("/", indexHandler(editSecret))
 	http.HandleFunc("/events", eventsHandler(broker))
 	http.HandleFunc("/save-config", saveConfigHandler(editSecret, broker))
+	http.Handle("/audio/", audioHandler(siteDomain))
 	http.HandleFunc("/api/balance", balanceHandler(store))
 	http.HandleFunc("/api/use-tokens", useTokensHandler(store))
 	http.HandleFunc("/buy-tokens", buyTokensHandler(store, siteDomain))
@@ -196,6 +200,22 @@ func main() {
 
 	log.Println("Listening on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+func audioHandler(domain string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ref := r.Referer()
+		if ref == "" || !strings.Contains(ref, strings.Split(domain, "://")[1]) {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		filename := strings.TrimPrefix(r.URL.Path, "/audio/")
+		if filename == "" || strings.Contains(filename, "..") {
+			http.Error(w, "Not found", http.StatusNotFound)
+			return
+		}
+		http.ServeFile(w, r, filepath.Join("audio_files", filename))
+	})
 }
 
 func indexHandler(secret string) http.HandlerFunc {
@@ -339,7 +359,8 @@ func useTokensHandler(store *BalanceStore) http.HandlerFunc {
 			return
 		}
 		user := store.Get(body.Email)
-		if user.Balance < body.Amount {
+		allowedSeconds := user.Balance * 3
+		if user.SecondsListened+30 > allowedSeconds {
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"balance":          user.Balance,
 				"seconds_listened": user.SecondsListened,
@@ -347,7 +368,6 @@ func useTokensHandler(store *BalanceStore) http.HandlerFunc {
 			})
 			return
 		}
-		user.Balance -= body.Amount
 		user.SecondsListened += 30
 		store.Set(body.Email, user)
 		store.Save()

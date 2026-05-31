@@ -63,10 +63,12 @@
     .audio-player {
       position: absolute;
       background: rgba(0,0,0,0.75); color: white;
-      padding: 0.4rem 0.6rem; border-radius: 8px;
-      display: flex; align-items: center; gap: 0.4rem;
-      z-index: 1; user-select: none; white-space: nowrap;
+      padding: 0.3rem 0.6rem; border-radius: 8px;
+      display: flex; flex-direction: column; gap: 0.2rem;
+      z-index: 1; user-select: none;
     }
+    .track-name { font-size: 0.75rem; opacity: 0.9; padding: 0 0.2rem; }
+    .track-controls { display: flex; align-items: center; gap: 0.3rem; }
     .audio-player .ctrl {
       background: transparent; border: none; color: white;
       cursor: pointer; font-size: 1rem; padding: 2px 4px;
@@ -124,6 +126,7 @@
     const initialCfg = {{.ConfigJSON}};
     let buttons = (initialCfg.buttons || []).slice();
     let tracks = (initialCfg.audio_tracks || []).slice();
+    let latestServerSecs = 0;
 
     function esc(s) {
       const d = document.createElement('div');
@@ -145,6 +148,7 @@
       })
         .then(r => r.json())
         .then(d => {
+          latestServerSecs = d.seconds_listened;
           document.getElementById('balance-value').textContent = d.balance;
           document.getElementById('seconds-info').textContent = d.seconds_listened + ' seconds listened';
           if (!d.ok) {
@@ -179,13 +183,17 @@
       div.dataset.type = 'track';
       div.dataset.idx = idx;
 
+      const audioSrc = t.url.startsWith('http') ? t.url : '/audio/' + t.url;
       div.innerHTML = `
-        <audio src="${esc(t.url)}" preload="auto"></audio>
-        <button class="ctrl play-btn">▶</button>
-        <input type="range" class="seek-bar" value="0" max="1000">
-        <span class="time">0:00</span>
-        <button class="ctrl loop-btn">${t.loop ? '🔁' : '○'}</button>
-        {{if .IsEdit}}<button class="del-btn">✕</button>{{end}}
+        <audio src="${esc(audioSrc)}" preload="auto"></audio>
+        <div class="track-name">${esc(t.name || '')}</div>
+        <div class="track-controls">
+          <button class="ctrl play-btn">▶</button>
+          <input type="range" class="seek-bar" value="0" max="1000">
+          <span class="time">0:00</span>
+          <button class="ctrl loop-btn">${t.loop ? '🔁' : '○'}</button>
+          {{if .IsEdit}}<button class="del-btn">✕</button>{{end}}
+        </div>
       `;
 
       const audio = div.querySelector('audio');
@@ -196,17 +204,22 @@
       const delBtn = div.querySelector('.del-btn');
 
       let seeking = false;
-      let lastDeduction = 0;
+      let sessionSecs = 0;
+      let lastTick = 0;
 
       playBtn.onclick = () => {
         const email = getCookie('email');
         if (!email) { alert('Set your email in the top-right to play audio'); return; }
-        if (audio.paused) { audio.play(); playBtn.textContent = '⏸'; }
+        if (audio.paused) { audio.play(); playBtn.textContent = '⏸'; lastTick = Date.now(); }
         else { audio.pause(); playBtn.textContent = '▶'; }
       };
 
-      audio.onplay = () => { playBtn.textContent = '⏸'; };
-      audio.onpause = () => { playBtn.textContent = '▶'; };
+      audio.onplay = () => { playBtn.textContent = '⏸'; lastTick = Date.now(); };
+      audio.onpause = () => {
+        playBtn.textContent = '▶';
+        if (lastTick > 0) sessionSecs += (Date.now() - lastTick) / 1000;
+        lastTick = 0;
+      };
       audio.onended = () => { if (!t.loop) playBtn.textContent = '▶'; };
 
       audio.ontimeupdate = () => {
@@ -214,10 +227,18 @@
           seekBar.value = (audio.currentTime / audio.duration) * 1000;
           timeSpan.textContent = formatTime(audio.currentTime);
         }
-        if (!audio.paused && audio.duration && audio.currentTime - lastDeduction >= 30) {
-          lastDeduction = audio.currentTime;
-          const email = getCookie('email');
-          if (email) deductTokens(email, div);
+        if (!audio.paused && lastTick > 0) {
+          const now = Date.now();
+          const delta = (now - lastTick) / 1000;
+          lastTick = now;
+          sessionSecs += delta;
+          document.getElementById('seconds-info').textContent =
+            Math.floor(latestServerSecs + sessionSecs) + ' seconds listened';
+          if (sessionSecs >= 30) {
+            sessionSecs -= 30;
+            const email = getCookie('email');
+            if (email) deductTokens(email, div);
+          }
         }
       };
 
@@ -329,10 +350,12 @@
     }
 
     function addTrack() {
-      const url = prompt('Audio URL (mp3/wav):');
-      if (!url) return;
+      const displayName = prompt('Display name (e.g. Artist - Song):');
+      if (!displayName) return;
+      const filename = prompt('Filename (e.g. song.mp3):');
+      if (!filename) return;
       const t = {
-        url, loop: false,
+        name: displayName, url: filename, loop: false,
         x: Math.random() * 80 + 5,
         y: Math.random() * 80 + 5
       };
@@ -416,6 +439,7 @@
       fetch('/api/balance?email=' + encodeURIComponent(email))
         .then(r => r.json())
         .then(d => {
+          latestServerSecs = d.seconds_listened;
           document.getElementById('balance-value').textContent = d.balance;
           document.getElementById('seconds-info').textContent = d.seconds_listened + ' seconds listened';
         })
