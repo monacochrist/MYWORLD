@@ -1,14 +1,212 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Hello World</title>
-  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <title>{{.Config.Title}}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      background: {{.Config.BgColor}}; margin: 0; min-height: 100vh;
+      position: relative; font-family: sans-serif; overflow: hidden;
+    }
+    h1 {
+      color: {{.Config.TitleColor}}; text-align: center; margin: 0;
+      padding: 2rem 2rem 1rem; pointer-events: none;
+      user-select: none;
+    }
+    #balance {
+      position: fixed; top: 1rem; right: 1rem;
+      display: flex; align-items: center; gap: 0.5rem;
+      color: white; font-size: 1.5rem; font-weight: bold;
+      font-family: monospace; z-index: 9999;
+      user-select: none;
+    }
+    .plus-btn {
+      background: white; color: {{.Config.BgColor}};
+      border: none; width: 2rem; height: 2rem;
+      border-radius: 50%; font-size: 1.3rem; font-weight: bold;
+      cursor: pointer; display: flex; align-items: center;
+      justify-content: center;
+    }
+    .plus-btn:hover { background: #f0f0f0; }
+    #container {
+      position: relative; width: 100%;
+      height: calc(100vh - 6rem);
+    }
+    .btn {
+      position: absolute;
+      background: white; color: {{.Config.BgColor}};
+      border: none; padding: 1rem 2rem;
+      font-size: 1.2rem; border-radius: 8px;
+      cursor: pointer; font-weight: bold;
+      white-space: nowrap; user-select: none;
+      z-index: 1;
+    }
+    .btn:hover { background: #f0f0f0; z-index: 2; }
+    .btn .ht { display: none; }
+    .btn:hover .dt { display: none; }
+    .btn:hover .ht { display: inline; }
+    {{if .IsEdit}}
+    .btn.dragging { opacity: 0.8; z-index: 999; cursor: grabbing; }
+    .btn::after { content: ''; position: absolute; inset: -4px; border: 2px dashed transparent; border-radius: 10px; opacity: 0; transition: opacity 0.15s; }
+    .btn:hover::after { border-color: rgba(255,255,255,0.5); opacity: 1; }
+    #hint { position: fixed; bottom: 1rem; right: 1rem; background: rgba(0,0,0,0.7); color: white; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.8rem; font-family: monospace; z-index: 9999; pointer-events: none; }
+    #hint kbd { background: rgba(255,255,255,0.15); padding: 1px 5px; border-radius: 3px; }
+    {{end}}
+  </style>
 </head>
 <body>
-  <h1>Hello World</h1>
-  <button hx-get="/hello" hx-target="#message" hx-swap="innerHTML">
-    Click me
-  </button>
-  <div id="message"></div>
+  <h1>{{.Config.Title}}</h1>
+  <div id="balance">
+    <span id="balance-value">{{.Config.Balance}}</span>
+    <button class="plus-btn" onclick="buyTokens()">+</button>
+  </div>
+  <div id="container"></div>
+
+  {{if .IsEdit}}
+  <div id="hint">
+    <kbd>B</kbd> add &nbsp; <kbd>D</kbd> delete &nbsp; <kbd>Shift</kbd>+click drag
+  </div>
+  {{end}}
+
+  <script>
+    const initialCfg = {{.ConfigJSON}};
+    let buttons = initialCfg.buttons.slice();
+
+    function esc(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    function makeButton(b, idx, onmousedown) {
+      const el = document.createElement('button');
+      el.className = 'btn';
+      el.style.left = b.x + 'px';
+      el.style.top = b.y + 'px';
+      el.innerHTML = `<span class="dt">${esc(b.text)}</span><span class="ht">${esc(b.hover_text)}</span>`;
+      if (onmousedown) {
+        el.addEventListener('mousedown', e => onmousedown(e, idx));
+      } else {
+        el.addEventListener('click', () => { window.location.href = b.url; });
+      }
+      return el;
+    }
+
+    function renderAll(mousedownHandler) {
+      const c = document.getElementById('container');
+      c.innerHTML = '';
+      buttons.forEach((b, i) => {
+        c.appendChild(makeButton(b, i, mousedownHandler));
+      });
+    }
+
+    {{if .IsEdit}}
+    let drag = null;
+    let hoveredBtn = null;
+
+    document.getElementById('container').addEventListener('mouseover', e => {
+      hoveredBtn = e.target.closest('.btn');
+    });
+    document.getElementById('container').addEventListener('mouseout', e => {
+      if (e.target.closest('.btn')) hoveredBtn = null;
+    });
+
+    function onMouseDown(e, idx) {
+      if (e.shiftKey) {
+        e.preventDefault();
+        const rect = e.target.closest('.btn').getBoundingClientRect();
+        drag = { idx, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top };
+        e.target.closest('.btn').classList.add('dragging');
+        return;
+      }
+      window.location.href = buttons[idx].url;
+    }
+
+    document.addEventListener('mousemove', e => {
+      if (!drag) return;
+      const b = buttons[drag.idx];
+      b.x = Math.max(0, e.clientX - drag.offsetX);
+      b.y = Math.max(0, e.clientY - drag.offsetY);
+      const el = document.querySelectorAll('.btn')[drag.idx];
+      if (el) { el.style.left = b.x + 'px'; el.style.top = b.y + 'px'; }
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (!drag) return;
+      document.querySelectorAll('.btn')[drag.idx]?.classList.remove('dragging');
+      drag = null;
+      save();
+    });
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'b' || e.key === 'B') { addButton(); e.preventDefault(); }
+      if ((e.key === 'd' || e.key === 'D') && hoveredBtn) {
+        delButton(hoveredBtn);
+        e.preventDefault();
+      }
+    });
+
+    function addButton() {
+      const text = prompt('Button text:') || 'New';
+      const hover = prompt('Hover text:') || 'Click';
+      const url = prompt('URL:') || '/';
+      const b = {
+        text, hover_text: hover, url, enabled: true,
+        x: Math.round(Math.random() * (window.innerWidth - 200)),
+        y: Math.round(Math.random() * (window.innerHeight - 200))
+      };
+      buttons.push(b);
+      renderAll(onMouseDown);
+      save();
+    }
+
+    function delButton(el) {
+      const idx = Array.from(document.querySelectorAll('.btn')).indexOf(el);
+      if (idx === -1) return;
+      buttons.splice(idx, 1);
+      hoveredBtn = null;
+      renderAll(onMouseDown);
+      save();
+    }
+
+    function save() {
+      fetch('/save-config?edit={{.EditSecret}}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: initialCfg.title,
+          bg_color: initialCfg.bg_color,
+          title_color: initialCfg.title_color,
+          buttons
+        })
+      });
+    }
+
+    renderAll(onMouseDown);
+    {{else}}
+    renderAll(null);
+    {{end}}
+
+    function buyTokens() {
+      fetch('/buy-tokens', { method: 'POST' })
+        .then(r => r.json())
+        .then(d => { if (d.url) window.location.href = d.url; else alert(d.error || 'Error'); })
+        .catch(() => alert('Failed to connect'));
+    }
+
+    const evtSource = new EventSource('/events');
+    evtSource.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        buttons = data.buttons.slice();
+        document.getElementById('balance-value').textContent = data.balance;
+        {{if .IsEdit}}
+        renderAll(onMouseDown);
+        {{else}}
+        renderAll(null);
+        {{end}}
+      } catch(err) {}
+    };
+  </script>
 </body>
 </html>

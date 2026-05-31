@@ -1,0 +1,16 @@
+{
+  "title": "Nick Monaco",
+  "bg_color": "#DE0000",
+  "title_color": "white",
+  "balance": 0,
+  "buttons": [
+    {
+      "text": "WAR",
+      "hover_text": "FREE",
+      "url": "https://example.com/download",
+      "enabled": true,
+      "x": 100,
+      "y": 200
+    }
+  ]
+}
