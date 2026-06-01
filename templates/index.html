@@ -34,7 +34,8 @@
     }
     #balance-auth button:hover { background: #f0f0f0; }
     #balance-display { display: none; align-items: center; gap: 0.5rem; }
-    #balance-email { font-size: 0.85rem; opacity: 0.8; }
+    #balance-email { font-size: 0.85rem; opacity: 0.8; cursor: pointer; }
+    #balance-email:hover { opacity: 1; }
     .plus-btn {
       background: white; color: {{.Config.BgColor}};
       border: none; width: 2rem; height: 2rem;
@@ -432,7 +433,20 @@
       document.getElementById('balance-auth').style.display = 'none';
       const display = document.getElementById('balance-display');
       display.style.display = 'flex';
-      document.getElementById('balance-email').textContent = email;
+      const el = document.getElementById('balance-email');
+      el.textContent = email + ' ✕';
+      el.title = 'Click to unset email';
+      el.style.cursor = 'pointer';
+      el.onclick = clearEmail;
+    }
+
+    function clearEmail() {
+      document.cookie = 'email=;path=/;max-age=0';
+      document.getElementById('balance-display').style.display = 'none';
+      document.getElementById('balance-auth').style.display = 'flex';
+      document.getElementById('email-input').value = '';
+      document.getElementById('seconds-info').textContent = '';
+      document.getElementById('balance-value').textContent = '';
     }
 
     function fetchBalance(email) {

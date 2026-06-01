@@ -5,20 +5,28 @@
   "buttons": [
     {
       "text": "WAR",
-      "hover_text": "FREE",
-      "url": "https://example.com/download",
+      "hover_text": "GITHUB",
+      "url": "https://github.com/monacochrist/WAR",
       "enabled": true,
-      "x": 49.66389190630906,
-      "y": 11.979613836677757
+      "x": 49.74032105608161,
+      "y": 10.981405010884473
+    },
+    {
+      "text": "WORLD",
+      "hover_text": "GITHUB",
+      "url": "https://github.com/monacochrist/WORLD",
+      "enabled": true,
+      "x": 49.81674805975162,
+      "y": 23.87074897775907
     }
   ],
   "audio_tracks": [
     {
       "name": "Nick Monaco - song10",
       "url": "meme10.mp3",
-      "loop": false,
-      "x": 50.14858326328455,
-      "y": 28.975232605450575
+      "loop": true,
+      "x": 50.10084750447763,
+      "y": 37.29028542632469
     }
   ]
 }
