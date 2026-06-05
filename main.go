@@ -38,12 +38,26 @@ type AudioTrack struct {
 	Y    float64 `json:"y"`
 }
 
+type AlbumTrack struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
+type Album struct {
+	Name     string       `json:"name"`
+	ImageURL string       `json:"image_url"`
+	Tracks   []AlbumTrack `json:"tracks"`
+	X        float64      `json:"x"`
+	Y        float64      `json:"y"`
+}
+
 type Config struct {
 	Title       string       `json:"title"`
 	BgColor     string       `json:"bg_color"`
 	TitleColor  string       `json:"title_color"`
 	Buttons     []Button     `json:"buttons"`
 	AudioTracks []AudioTrack `json:"audio_tracks"`
+	Albums      []Album      `json:"albums"`
 }
 
 type UserData struct {
@@ -282,6 +296,7 @@ func main() {
 	http.HandleFunc("/events", eventsHandler(broker))
 	http.HandleFunc("/save-config", saveConfigHandler(editSecret, broker))
 	http.Handle("/audio/", audioHandler(siteDomain))
+	http.Handle("/images/", imagesHandler(siteDomain))
 	http.HandleFunc("/api/balance", balanceHandler(store))
 	http.HandleFunc("/api/use-tokens", useTokensHandler(store))
 	http.HandleFunc("/api/send-magic-link", sendMagicLinkHandler(siteDomain))
@@ -397,6 +412,22 @@ func audioHandler(domain string) http.Handler {
 			return
 		}
 		http.ServeFile(w, r, filepath.Join("audio_files", filename))
+	})
+}
+
+func imagesHandler(domain string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ref := r.Referer()
+		if ref == "" || !strings.Contains(ref, strings.Split(domain, "://")[1]) {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		filename := strings.TrimPrefix(r.URL.Path, "/images/")
+		if filename == "" || strings.Contains(filename, "..") {
+			http.Error(w, "Not found", http.StatusNotFound)
+			return
+		}
+		http.ServeFile(w, r, filepath.Join("images", filename))
 	})
 }
 

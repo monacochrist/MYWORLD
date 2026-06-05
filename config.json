@@ -6,27 +6,37 @@
     {
       "text": "WAR",
       "hover_text": "GITHUB",
-      "url": "https://github.com/monacochrist/WAR",
+      "url": "https://github.com/monacochrist/war",
       "enabled": true,
-      "x": 49.74032105608161,
-      "y": 10.981405010884473
+      "x": 49.54253195374994,
+      "y": 8.840796699572895
     },
     {
       "text": "WORLD",
       "hover_text": "GITHUB",
-      "url": "https://github.com/monacochrist/WORLD",
+      "url": "https://github.com/monacochrist/world",
       "enabled": true,
-      "x": 49.81674805975162,
-      "y": 23.87074897775907
+      "x": 49.535329633624244,
+      "y": 19.864545094951584
     }
   ],
-  "audio_tracks": [
+  "audio_tracks": [],
+  "albums": [
     {
-      "name": "Nick Monaco - song10",
-      "url": "meme10.mp3",
-      "loop": true,
-      "x": 50.10084750447763,
-      "y": 37.29028542632469
+      "name": "WAR",
+      "image_url": "WAR-logo.jpg",
+      "tracks": [
+        {
+          "name": "Monaco - Song10",
+          "url": "song10.mp3"
+        },
+        {
+          "name": "Monaco - Song11",
+          "url": "song11.mp3"
+        }
+      ],
+      "x": 49.725421202669,
+      "y": 39.3399670739229
     }
   ]
 }
