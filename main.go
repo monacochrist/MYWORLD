@@ -1,14 +1,10 @@
 package main
 
 import (
-<<<<<<< HEAD
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
-=======
-	"crypto/rand"
->>>>>>> origin/master
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -19,10 +15,7 @@ import (
 	"net/smtp"
 	"os"
 	"path/filepath"
-<<<<<<< HEAD
 	"strconv"
-=======
->>>>>>> origin/master
 	"strings"
 	"sync"
 	"time"
@@ -50,14 +43,9 @@ type AudioTrack struct {
 }
 
 type AlbumTrack struct {
-<<<<<<< HEAD
 	Name    string `json:"name"`
 	URL     string `json:"url"`
 	Streams int    `json:"streams"`
-=======
-	Name string `json:"name"`
-	URL  string `json:"url"`
->>>>>>> origin/master
 }
 
 type Album struct {
@@ -69,7 +57,6 @@ type Album struct {
 }
 
 type Config struct {
-<<<<<<< HEAD
 	Title        string       `json:"title"`
 	BgColor      string       `json:"bg_color"`
 	TitleColor   string       `json:"title_color"`
@@ -78,14 +65,6 @@ type Config struct {
 	Buttons      []Button     `json:"buttons"`
 	AudioTracks  []AudioTrack `json:"audio_tracks"`
 	Albums       []Album      `json:"albums"`
-=======
-	Title       string       `json:"title"`
-	BgColor     string       `json:"bg_color"`
-	TitleColor  string       `json:"title_color"`
-	Buttons     []Button     `json:"buttons"`
-	AudioTracks []AudioTrack `json:"audio_tracks"`
-	Albums      []Album      `json:"albums"`
->>>>>>> origin/master
 }
 
 type UserData struct {
@@ -181,7 +160,6 @@ func (s *BalanceStore) Set(email string, u UserData) {
 	s.balances[email] = u
 }
 
-<<<<<<< HEAD
 type StreamCountStore struct {
 	mu     sync.Mutex
 	path   string
@@ -289,8 +267,6 @@ func (s *UniqueUsersStore) GetAllMonths() map[string]int {
 	return result
 }
 
-=======
->>>>>>> origin/master
 var (
 	configMu   sync.Mutex
 	rateLimitMu sync.Mutex
@@ -337,7 +313,6 @@ var (
 	smtpFrom = os.Getenv("SMTP_FROM")
 )
 
-<<<<<<< HEAD
 var streamSecret []byte
 
 func makeStreamURL(filename string) (string, int64) {
@@ -386,8 +361,6 @@ func getEmailFromCookie(r *http.Request) string {
 	return c.Value
 }
 
-=======
->>>>>>> origin/master
 type MagicToken struct {
 	Email   string `json:"email"`
 	Expires int64  `json:"expires"`
@@ -478,7 +451,6 @@ func main() {
 		siteDomain = "http://localhost:8080"
 	}
 
-<<<<<<< HEAD
 	key := os.Getenv("STREAM_SECRET")
 	if key == "" {
 		b := make([]byte, 32)
@@ -528,18 +500,6 @@ func main() {
 	http.HandleFunc("/api/stream-counts", streamCountsHandler(streamStore))
 	http.HandleFunc("/api/admin/unique-users", uniqueUsersHandler(uniqueStore))
 	http.HandleFunc("/sso-login", ssoLoginHandler(ssoAggregator))
-=======
-	broker := NewSSEBroker()
-	store := NewBalanceStore("balances.json")
-
-	http.HandleFunc("/", indexHandler(editSecret))
-	http.HandleFunc("/events", eventsHandler(broker))
-	http.HandleFunc("/save-config", saveConfigHandler(editSecret, broker))
-	http.Handle("/audio/", audioHandler(siteDomain))
-	http.Handle("/images/", imagesHandler(siteDomain))
-	http.HandleFunc("/api/balance", balanceHandler(store))
-	http.HandleFunc("/api/use-tokens", useTokensHandler(store))
->>>>>>> origin/master
 	http.HandleFunc("/api/send-magic-link", sendMagicLinkHandler(siteDomain))
 	http.HandleFunc("/verify", verifyHandler)
 	http.HandleFunc("/buy-tokens", buyTokensHandler(store, siteDomain))
@@ -620,10 +580,7 @@ func verifyHandler(w http.ResponseWriter, r *http.Request) {
 
 	mt, ok := tokens[token]
 	if !ok || time.Now().Unix() > mt.Expires {
-<<<<<<< HEAD
 		log.Printf("verify: invalid or expired token %s (ok=%v)", token[:min(8, len(token))], ok)
-=======
->>>>>>> origin/master
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
@@ -634,11 +591,8 @@ func verifyHandler(w http.ResponseWriter, r *http.Request) {
 	saveMagicTokens(tokens)
 	magicMu.Unlock()
 
-<<<<<<< HEAD
 	log.Printf("verify: logged in %s via magic link", mt.Email)
 
-=======
->>>>>>> origin/master
 	// Set email cookie and redirect
 	http.SetCookie(w, &http.Cookie{
 		Name:   "email",
@@ -649,7 +603,6 @@ func verifyHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-<<<<<<< HEAD
 func min(a, b int) int {
 	if a < b {
 		return a
@@ -700,15 +653,6 @@ func isAllowedReferer(r *http.Request, domain, aggregatorHost string) bool {
 
 func audioHandler(domain, aggregatorURL string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-=======
-func audioHandler(domain string) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ref := r.Referer()
-		if ref == "" || !strings.Contains(ref, strings.Split(domain, "://")[1]) {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
->>>>>>> origin/master
 		filename := strings.TrimPrefix(r.URL.Path, "/audio/")
 		if filename == "" || strings.Contains(filename, "..") {
 			http.Error(w, "Not found", http.StatusNotFound)
@@ -718,7 +662,6 @@ func audioHandler(domain string) http.Handler {
 	})
 }
 
-<<<<<<< HEAD
 func streamHandler(domain, aggregatorURL string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if origin := r.Header.Get("Origin"); origin != "" {
@@ -1055,15 +998,6 @@ func publicReportStreamHandler(streamStore *StreamCountStore) http.HandlerFunc {
 
 func imagesHandler(domain, aggregatorURL string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-=======
-func imagesHandler(domain string) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ref := r.Referer()
-		if ref == "" || !strings.Contains(ref, strings.Split(domain, "://")[1]) {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
->>>>>>> origin/master
 		filename := strings.TrimPrefix(r.URL.Path, "/images/")
 		if filename == "" || strings.Contains(filename, "..") {
 			http.Error(w, "Not found", http.StatusNotFound)
@@ -1073,11 +1007,7 @@ func imagesHandler(domain string) http.Handler {
 	})
 }
 
-<<<<<<< HEAD
 func indexHandler(secret string, streamStore *StreamCountStore, balanceStore *BalanceStore, siteDomain, ssoAggregator string) http.HandlerFunc {
-=======
-func indexHandler(secret string) http.HandlerFunc {
->>>>>>> origin/master
 	return func(w http.ResponseWriter, r *http.Request) {
 		configMu.Lock()
 		cfg, err := loadConfig()
@@ -1089,7 +1019,6 @@ func indexHandler(secret string) http.HandlerFunc {
 		}
 		isEdit := secret != "" && r.URL.Query().Get("edit") == secret
 		cfgJSON, _ := json.Marshal(cfg)
-<<<<<<< HEAD
 
 		signedURLs := make(map[string]string)
 		for _, t := range cfg.AudioTracks {
@@ -1133,14 +1062,6 @@ func indexHandler(secret string) http.HandlerFunc {
 			"StreamCounts":   sc,
 			"StreamCountsJS": template.JS(scJSON),
 			"InitialSecs":    initialSecs,
-=======
-		tmpl := template.Must(template.ParseFiles("templates/index.html"))
-		tmpl.Execute(w, map[string]interface{}{
-			"Config":     cfg,
-			"ConfigJSON": template.JS(cfgJSON),
-			"IsEdit":     isEdit,
-			"EditSecret": secret,
->>>>>>> origin/master
 		})
 	}
 }
@@ -1235,11 +1156,7 @@ func balanceHandler(store *BalanceStore) http.HandlerFunc {
 	}
 }
 
-<<<<<<< HEAD
 func useTokensHandler(store *BalanceStore, streamStore *StreamCountStore, uniqueStore *UniqueUsersStore) http.HandlerFunc {
-=======
-func useTokensHandler(store *BalanceStore) http.HandlerFunc {
->>>>>>> origin/master
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.Method != http.MethodPost {
@@ -1249,17 +1166,13 @@ func useTokensHandler(store *BalanceStore) http.HandlerFunc {
 		var body struct {
 			Email  string `json:"email"`
 			Amount int    `json:"amount"`
-<<<<<<< HEAD
 			Song   string `json:"song"`
-=======
->>>>>>> origin/master
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Email == "" || body.Amount <= 0 {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]string{"error": "invalid request"})
 			return
 		}
-<<<<<<< HEAD
 		uniqueStore.Lock()
 		uniqueStore.Load()
 		uniqueStore.Track(body.Email)
@@ -1286,16 +1199,6 @@ func useTokensHandler(store *BalanceStore) http.HandlerFunc {
 		store.Lock()
 		if err := store.Load(); err != nil {
 			store.Unlock()
-=======
-		if !checkTokenRate(body.Email) {
-			w.WriteHeader(http.StatusTooManyRequests)
-			json.NewEncoder(w).Encode(map[string]string{"error": "rate limited"})
-			return
-		}
-		store.Lock()
-		defer store.Unlock()
-		if err := store.Load(); err != nil {
->>>>>>> origin/master
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "server error"})
 			return
@@ -1303,37 +1206,25 @@ func useTokensHandler(store *BalanceStore) http.HandlerFunc {
 		user := store.Get(body.Email)
 		allowedSeconds := user.Balance * 3
 		if user.SecondsListened+30 > allowedSeconds {
-<<<<<<< HEAD
 			store.Unlock()
-=======
->>>>>>> origin/master
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"balance":          user.Balance,
 				"seconds_listened": user.SecondsListened,
 				"ok":               false,
-<<<<<<< HEAD
 				"stream_counts":    allCounts,
-=======
->>>>>>> origin/master
 			})
 			return
 		}
 		user.SecondsListened += 30
 		store.Set(body.Email, user)
 		store.Save()
-<<<<<<< HEAD
 		store.Unlock()
 
-=======
->>>>>>> origin/master
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"balance":          user.Balance,
 			"seconds_listened": user.SecondsListened,
 			"ok":               true,
-<<<<<<< HEAD
 			"stream_counts":    allCounts,
-=======
->>>>>>> origin/master
 		})
 	}
 }
@@ -1427,11 +1318,7 @@ func successHandler(store *BalanceStore) http.HandlerFunc {
 		secondsListened := user.SecondsListened
 		store.Unlock()
 
-<<<<<<< HEAD
 		tmpl := template.Must(template.ParseFiles("tmpl/success.html"))
-=======
-		tmpl := template.Must(template.ParseFiles("templates/success.html"))
->>>>>>> origin/master
 		tmpl.Execute(w, map[string]interface{}{
 			"Email":            s.CustomerEmail,
 			"Balance":          balance,
