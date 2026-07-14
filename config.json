@@ -1,0 +1,42 @@
+{
+  "title": "Nick Monaco",
+  "bg_color": "#DE0000",
+  "title_color": "white",
+  "buttons": [
+    {
+      "text": "WAR",
+      "hover_text": "GITHUB",
+      "url": "https://github.com/monacochrist/war",
+      "enabled": true,
+      "x": 49.54253195374994,
+      "y": 8.840796699572895
+    },
+    {
+      "text": "WORLD",
+      "hover_text": "GITHUB",
+      "url": "https://github.com/monacochrist/world",
+      "enabled": true,
+      "x": 49.535329633624244,
+      "y": 19.864545094951584
+    }
+  ],
+  "audio_tracks": [],
+  "albums": [
+    {
+      "name": "WAR",
+      "image_url": "WAR-logo.jpg",
+      "tracks": [
+        {
+          "name": "Monaco - Song10",
+          "url": "song10.mp3"
+        },
+        {
+          "name": "Monaco - Song11",
+          "url": "song11.mp3"
+        }
+      ],
+      "x": 49.725421202669,
+      "y": 39.3399670739229
+    }
+  ]
+}

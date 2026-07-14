@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{{.Config.Title}}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      background: {{.Config.BgColor}}; margin: 0; min-height: 100vh;
+      position: relative; font-family: sans-serif; overflow: hidden;
+    }
+    h1 {
+      color: {{.Config.TitleColor}}; text-align: center; margin: 0;
+      padding: 2rem 2rem 1rem; pointer-events: none;
+      user-select: none;
+    }
+    #balance {
+      position: fixed; top: 1rem; right: 1rem;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem;
+      color: white; font-size: 1.5rem; font-weight: bold;
+      font-family: monospace; z-index: 9999;
+      user-select: none;
+    }
+    #rate-info { font-size: 0.7rem; opacity: 0.7; font-weight: normal; }
+    #seconds-info { font-size: 0.7rem; opacity: 0.6; font-weight: normal; }
+    #balance-auth { display: flex; align-items: center; gap: 0.5rem; }
+    #balance-auth input {
+      padding: 0.4rem 0.6rem; border: none; border-radius: 4px;
+      font-size: 0.9rem; width: 180px;
+    }
+    #balance-auth button {
+      background: white; color: {{.Config.BgColor}};
+      border: none; padding: 0.4rem 0.8rem; border-radius: 4px;
+      font-weight: bold; cursor: pointer;
+    }
+    #balance-auth button:hover { background: #f0f0f0; }
+    #balance-auth button:disabled { opacity: 0.6; cursor: default; }
+    #magic-status { font-size: 0.75rem; opacity: 0.8; color: white; max-width: 200px; }
+    #balance-display { display: none; align-items: center; gap: 0.5rem; }
+    #balance-email { font-size: 0.85rem; opacity: 0.8; cursor: pointer; }
+    #balance-email:hover { opacity: 1; }
+    .plus-btn {
+      background: white; color: {{.Config.BgColor}};
+      border: none; width: 2rem; height: 2rem;
+      border-radius: 50%; font-size: 1.3rem; font-weight: bold;
+      cursor: pointer; display: flex; align-items: center;
+      justify-content: center;
+    }
+    .plus-btn:hover { background: #f0f0f0; }
+    #container {
+      position: relative; width: 100%;
+      height: calc(100vh - 6rem);
+    }
+    .btn {
+      position: absolute;
+      background: white; color: {{.Config.BgColor}};
+      border: none; padding: 1rem 2rem;
+      font-size: 1.2rem; border-radius: 8px;
+      cursor: pointer; font-weight: bold;
+      white-space: nowrap; user-select: none;
+      z-index: 1;
+    }
+    .btn:hover { background: #f0f0f0; z-index: 2; }
+    .btn .ht { display: none; }
+    .btn:hover .dt { display: none; }
+    .btn:hover .ht { display: inline; }
+    .audio-player {
+      position: absolute;
+      background: rgba(0,0,0,0.75); color: white;
+      padding: 0.3rem 0.6rem; border-radius: 8px;
+      display: flex; flex-direction: column; gap: 0.2rem;
+      z-index: 1; user-select: none;
+    }
+    .track-name { font-size: 0.75rem; opacity: 0.9; padding: 0 0.2rem; }
+    .track-controls { display: flex; align-items: center; gap: 0.3rem; }
+    .audio-player .ctrl {
+      background: transparent; border: none; color: white;
+      cursor: pointer; font-size: 1rem; padding: 2px 4px;
+      line-height: 1;
+    }
+    .audio-player .ctrl:hover { background: rgba(255,255,255,0.15); border-radius: 4px; }
+    .audio-player .seek-bar {
+      width: 120px; height: 4px; cursor: pointer;
+      accent-color: white;
+    }
+    .audio-player .time {
+      font-size: 0.75rem; font-family: monospace; min-width: 3.5ch;
+    }
+    .audio-player.dragging { opacity: 0.8; z-index: 999; }
+    .album {
+      position: absolute; background: rgba(0,0,0,0.85); color: white;
+      border-radius: 10px; padding: 0.6rem 0.8rem; z-index: 1;
+      user-select: none; min-width: 220px;
+    }
+    .album-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; }
+    .album-cover { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; }
+    .album-name { font-weight: bold; font-size: 0.95rem; }
+    .album-tracks { display: flex; flex-direction: column; gap: 0.15rem; }
+    .album-track {
+      display: flex; align-items: center; gap: 0.3rem;
+      padding: 0.2rem 0; font-size: 0.85rem;
+    }
+    .album-track .play-btn {
+      background: transparent; border: none; color: white;
+      cursor: pointer; font-size: 0.85rem; padding: 2px;
+    }
+    .album-track .track-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .album-track .seek-bar { width: 70px; height: 3px; cursor: pointer; accent-color: white; }
+    .album-track .track-time { font-family: monospace; font-size: 0.7rem; opacity: 0.7; min-width: 3ch; }
+    .album-track .ctrl {
+      background: transparent; border: none; color: white; cursor: pointer;
+      font-size: 0.75rem; padding: 1px 3px; opacity: 0.6;
+    }
+    .album-track .ctrl:hover { opacity: 1; }
+    .reorder-btn { color: #aaa !important; }
+    .reorder-btn:hover { color: white !important; }
+    .add-track-btn {
+      width: 100%; margin-top: 0.3rem;
+      background: rgba(255,255,255,0.08); border: 1px dashed rgba(255,255,255,0.25);
+      color: white; padding: 0.25rem; border-radius: 4px; cursor: pointer;
+      font-size: 0.75rem;
+    }
+    .add-track-btn:hover { background: rgba(255,255,255,0.15); }
+    .album-controls { display: flex; align-items: center; gap: 0.3rem; margin-top: 0.3rem; padding-top: 0.3rem; border-top: 1px solid rgba(255,255,255,0.1); }
+    .album-controls .ctrl { background: transparent; border: none; color: white; cursor: pointer; font-size: 0.85rem; opacity: 0.5; padding: 2px 4px; }
+    .album-controls .ctrl:hover { opacity: 1; }
+    {{if .IsEdit}}
+    .btn.dragging { opacity: 0.8; z-index: 999; cursor: grabbing; }
+    .btn::after { content: ''; position: absolute; inset: -4px; border: 2px dashed transparent; border-radius: 10px; opacity: 0; transition: opacity 0.15s; }
+    .btn:hover::after { border-color: rgba(255,255,255,0.5); opacity: 1; }
+    .audio-player { outline: 2px dashed transparent; }
+    .audio-player:hover { outline-color: rgba(255,255,255,0.5); }
+    .audio-player .del-btn {
+      background: transparent; border: none; color: #ff6666;
+      cursor: pointer; font-size: 1rem; padding: 2px 4px; line-height: 1;
+    }
+    .audio-player .del-btn:hover { background: rgba(255,0,0,0.2); border-radius: 4px; }
+    .album { outline: 2px dashed transparent; }
+    .album:hover { outline-color: rgba(255,255,255,0.4); }
+    .album.dragging { opacity: 0.8; z-index: 999; }
+    .album-track .del-btn { color: #ff6666 !important; }
+    #hint { position: fixed; bottom: 1rem; right: 1rem; background: rgba(0,0,0,0.7); color: white; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.8rem; font-family: monospace; z-index: 9999; pointer-events: none; }
+    #hint kbd { background: rgba(255,255,255,0.15); padding: 1px 5px; border-radius: 3px; }
+    {{end}}
+  </style>
+</head>
+<body>
+  <h1>{{.Config.Title}}</h1>
+  <div id="balance">
+    <div id="balance-auth">
+      <input type="email" id="email-input" placeholder="your@email.com" autocomplete="email">
+      <button id="magic-btn" onclick="sendMagicLink()">Send Magic Link</button>
+      <div id="magic-status"></div>
+    </div>
+    <div id="balance-display">
+      <span id="balance-email"></span>
+      <span id="balance-value"></span>
+      <button class="plus-btn" onclick="buyTokens()">+</button>
+    </div>
+    <div id="rate-info">30 seconds = 10 tokens</div>
+    <div id="seconds-info"></div>
+  </div>
+  <div id="container"></div>
+
+  {{if .IsEdit}}
+  <div id="hint">
+    <kbd>B</kbd> button &nbsp; <kbd>P</kbd> audio &nbsp; <kbd>A</kbd> album &nbsp; <kbd>D</kbd> delete &nbsp; <kbd>Shift</kbd>+click drag
+  </div>
+  {{end}}
+
+  <script>
+    const initialCfg = {{.ConfigJSON}};
+    let buttons = (initialCfg.buttons || []).slice();
+    let tracks = (initialCfg.audio_tracks || []).slice();
+    let albums = (initialCfg.albums || []).slice();
+    let latestServerSecs = 0;
+    let globalSessionSecs = 0;
+
+    function esc(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    function formatTime(s) {
+      const m = Math.floor(s / 60);
+      const sec = Math.floor(s % 60);
+      return m + ':' + (sec < 10 ? '0' : '') + sec;
+    }
+
+    function deductTokens(email, playerDiv) {
+      fetch('/api/use-tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, amount: 10 })
+      })
+        .then(r => r.json())
+        .then(d => {
+          latestServerSecs = d.seconds_listened;
+          document.getElementById('balance-value').textContent = d.balance;
+          document.getElementById('seconds-info').textContent = d.seconds_listened + ' seconds listened';
+          if (!d.ok) {
+            const audio = playerDiv.querySelector('audio');
+            const pb = playerDiv.querySelector('.play-btn');
+            audio.pause();
+            pb.textContent = '▶';
+            alert('Insufficient tokens. Buy tokens to continue listening.');
+          }
+        })
+        .catch(() => {});
+    }
+
+    function makeButton(b, idx) {
+      const el = document.createElement('button');
+      el.className = 'btn';
+      el.style.left = b.x + '%';
+      el.style.top = b.y + '%';
+      el.style.transform = 'translate(-50%,-50%)';
+      el.dataset.type = 'button';
+      el.dataset.idx = idx;
+      el.innerHTML = `<span class="dt">${esc(b.text)}</span><span class="ht">${esc(b.hover_text)}</span>`;
+      return el;
+    }
+
+    function makeTrack(t, idx) {
+      const div = document.createElement('div');
+      div.className = 'audio-player';
+      div.style.left = t.x + '%';
+      div.style.top = t.y + '%';
+      div.style.transform = 'translate(-50%,-50%)';
+      div.dataset.type = 'track';
+      div.dataset.idx = idx;
+
+      const audioSrc = t.url.startsWith('http') ? t.url : '/audio/' + t.url;
+      div.innerHTML = `
+        <audio src="${esc(audioSrc)}" preload="auto"></audio>
+        <div class="track-name">${esc(t.name || '')}</div>
+        <div class="track-controls">
+          <button class="ctrl play-btn">▶</button>
+          <input type="range" class="seek-bar" value="0" max="1000">
+          <span class="time">0:00</span>
+          <button class="ctrl loop-btn">${t.loop ? '🔁' : '○'}</button>
+          {{if .IsEdit}}<button class="del-btn">✕</button>{{end}}
+        </div>
+      `;
+
+      const audio = div.querySelector('audio');
+      const playBtn = div.querySelector('.play-btn');
+      const seekBar = div.querySelector('.seek-bar');
+      const timeSpan = div.querySelector('.time');
+      const loopBtn = div.querySelector('.loop-btn');
+      const delBtn = div.querySelector('.del-btn');
+
+      let seeking = false;
+      let lastTick = 0;
+
+      playBtn.onclick = () => {
+        const email = getCookie('email');
+        if (!email) { alert('Set your email in the top-right to play audio'); return; }
+        if (audio.paused) { audio.play(); playBtn.textContent = '⏸'; lastTick = Date.now(); }
+        else { audio.pause(); playBtn.textContent = '▶'; }
+      };
+
+      audio.onplay = () => { playBtn.textContent = '⏸'; lastTick = Date.now(); };
+      audio.onpause = () => {
+        playBtn.textContent = '▶';
+        if (lastTick > 0) globalSessionSecs += (Date.now() - lastTick) / 1000;
+        lastTick = 0;
+      };
+      audio.onended = () => { if (!t.loop) playBtn.textContent = '▶'; };
+
+      audio.ontimeupdate = () => {
+        if (!seeking && audio.duration) {
+          seekBar.value = (audio.currentTime / audio.duration) * 1000;
+          timeSpan.textContent = formatTime(audio.currentTime);
+        }
+        if (!audio.paused && lastTick > 0) {
+          const now = Date.now();
+          const delta = (now - lastTick) / 1000;
+          lastTick = now;
+          globalSessionSecs += delta;
+          document.getElementById('seconds-info').textContent =
+            Math.floor(latestServerSecs + globalSessionSecs) + ' seconds listened';
+          if (globalSessionSecs >= 30) {
+            globalSessionSecs -= 30;
+            const email = getCookie('email');
+            if (email) deductTokens(email, div);
+          }
+        }
+      };
+
+      seekBar.oninput = () => {
+        seeking = true;
+        if (audio.duration) {
+          audio.currentTime = (seekBar.value / 1000) * audio.duration;
+          timeSpan.textContent = formatTime(audio.currentTime);
+        }
+      };
+      seekBar.onchange = () => { seeking = false; };
+
+      loopBtn.onclick = () => {
+        t.loop = !t.loop;
+        audio.loop = t.loop;
+        loopBtn.textContent = t.loop ? '🔁' : '○';
+        save();
+      };
+
+      if (delBtn) {
+        delBtn.onclick = () => {
+          const idx = parseInt(div.dataset.idx);
+          tracks.splice(idx, 1);
+          renderAll();
+          save();
+        };
+      }
+
+      return div;
+    }
+
+    function makeAlbum(a, idx) {
+      const div = document.createElement('div');
+      div.className = 'album';
+      div.style.left = a.x + '%';
+      div.style.top = a.y + '%';
+      div.style.transform = 'translate(-50%,-50%)';
+      div.dataset.type = 'album';
+      div.dataset.idx = idx;
+
+      const state = { currentIdx: -1, loopMode: 0, shuffle: false };
+      const imgSrc = (a.image_url || '').startsWith('http') ? a.image_url : '/images/' + a.image_url;
+      let html = '<div class="album-header"><img src="' + esc(imgSrc) + '" class="album-cover" onerror="this.style.display=\'none\'"><span class="album-name">' + esc(a.name) + '</span></div><div class="album-tracks">';
+      a.tracks.forEach((t, ti) => {
+        html += '<div class="album-track" data-type="album-track" data-album-idx="' + idx + '" data-ti="' + ti + '"><button class="ctrl play-btn">▶</button><span class="track-name">' + esc(t.name) + '</span><input type="range" class="seek-bar" value="0" max="1000"><span class="track-time">0:00</span></div>';
+      });
+      html += '</div><div class="album-controls"><button class="ctrl shuffle-btn">🔀</button><button class="ctrl loop-btn">○</button></div>';
+      div.innerHTML = html;
+
+      function playTrack(ti) {
+        trackEls.forEach((el, i) => {
+          const a = el.querySelector('audio');
+          const pb = el.querySelector('.play-btn');
+          if (i === ti) { a.play(); pb.textContent = '⏸'; }
+          else { a.pause(); pb.textContent = '▶'; }
+        });
+        state.currentIdx = ti;
+      }
+
+      const trackEls = div.querySelectorAll('.album-track');
+      a.tracks.forEach((t, ti) => {
+        const el = trackEls[ti];
+        const audio = document.createElement('audio');
+        audio.src = t.url.startsWith('http') ? t.url : '/audio/' + t.url;
+        audio.preload = 'auto';
+        el.appendChild(audio);
+        const playBtn = el.querySelector('.play-btn');
+        const seekBar = el.querySelector('.seek-bar');
+        const timeSpan = el.querySelector('.track-time');
+        let lastTick = 0, seeking = false;
+
+        playBtn.onclick = () => {
+          const email = getCookie('email');
+          if (!email) { alert('Set your email to play'); return; }
+          if (audio.paused) {
+            playTrack(ti);
+            lastTick = Date.now();
+          } else {
+            audio.pause();
+            playBtn.textContent = '▶';
+          }
+        };
+        audio.onplay = () => { playBtn.textContent = '⏸'; lastTick = Date.now(); };
+        audio.onpause = () => {
+          playBtn.textContent = '▶';
+          if (lastTick > 0) globalSessionSecs += (Date.now() - lastTick) / 1000;
+          lastTick = 0;
+        };
+        audio.onended = () => {
+          playBtn.textContent = '▶';
+          if (state.loopMode === 1) { audio.currentTime = 0; audio.play(); return; }
+          if (state.loopMode === 2) {
+            let next;
+            if (state.shuffle) {
+              next = Math.floor(Math.random() * a.tracks.length);
+            } else {
+              next = (ti + 1) % a.tracks.length;
+            }
+            playTrack(next);
+          }
+        };
+        audio.ontimeupdate = () => {
+          if (!seeking && audio.duration) {
+            seekBar.value = (audio.currentTime / audio.duration) * 1000;
+            timeSpan.textContent = formatTime(audio.currentTime);
+          }
+          if (!audio.paused && lastTick > 0) {
+            const now = Date.now();
+            const delta = (now - lastTick) / 1000;
+            lastTick = now;
+            globalSessionSecs += delta;
+            document.getElementById('seconds-info').textContent = Math.floor(latestServerSecs + globalSessionSecs) + ' seconds listened';
+            if (globalSessionSecs >= 30) {
+              globalSessionSecs -= 30;
+              const email = getCookie('email');
+              if (email) deductTokens(email, el);
+            }
+          }
+        };
+        seekBar.oninput = () => {
+          seeking = true;
+          if (audio.duration) {
+            audio.currentTime = (seekBar.value / 1000) * audio.duration;
+            timeSpan.textContent = formatTime(audio.currentTime);
+          }
+        };
+        seekBar.onchange = () => { seeking = false; };
+      });
+
+      const shuffleBtn = div.querySelector('.shuffle-btn');
+      const loopBtn = div.querySelector('.loop-btn');
+      const loopLabels = ['○', '🔂', '🔁'];
+      shuffleBtn.onclick = () => { state.shuffle = !state.shuffle; shuffleBtn.style.opacity = state.shuffle ? '1' : '0.5'; };
+      loopBtn.onclick = () => { state.loopMode = (state.loopMode + 1) % 3; loopBtn.textContent = loopLabels[state.loopMode]; };
+
+      {{if .IsEdit}}
+      const addBtn = document.createElement('button');
+      addBtn.className = 'add-track-btn';
+      addBtn.textContent = '+ Add Track';
+      addBtn.onclick = () => {
+        const name = prompt('Track name:'); if (!name) return;
+        const fn = prompt('Filename:'); if (!fn) return;
+        albums[idx].tracks.push({name, url: fn});
+        renderAll(); save();
+      };
+      div.querySelector('.album-controls').after(addBtn);
+      div.querySelectorAll('.album-track').forEach((el, ti) => {
+        const up = document.createElement('button');
+        up.className = 'ctrl reorder-btn'; up.textContent = '↑';
+        up.onclick = e => { e.stopPropagation(); moveTrack(idx, ti, -1); };
+        el.appendChild(up);
+        const down = document.createElement('button');
+        down.className = 'ctrl reorder-btn'; down.textContent = '↓';
+        down.onclick = e => { e.stopPropagation(); moveTrack(idx, ti, 1); };
+        el.appendChild(down);
+        const del = document.createElement('button');
+        del.className = 'ctrl del-btn'; del.textContent = '✕';
+        del.onclick = e => { e.stopPropagation(); albums[idx].tracks.splice(ti, 1); renderAll(); save(); };
+        el.appendChild(del);
+      });
+      {{end}}
+      return div;
+    }
+
+    function renderAll() {
+      const c = document.getElementById('container');
+      c.innerHTML = '';
+      buttons.forEach((b, i) => c.appendChild(makeButton(b, i)));
+      tracks.forEach((t, i) => c.appendChild(makeTrack(t, i)));
+      albums.forEach((a, i) => c.appendChild(makeAlbum(a, i)));
+    }
+
+    {{if .IsEdit}}
+    let drag = null;
+    let hoveredEl = null;
+
+    document.getElementById('container').addEventListener('mouseover', e => {
+      hoveredEl = e.target.closest('[data-type]');
+    });
+    document.getElementById('container').addEventListener('mouseout', e => {
+      if (e.target.closest('[data-type]')) hoveredEl = null;
+    });
+
+    document.getElementById('container').addEventListener('mousedown', e => {
+      const target = e.target.closest('[data-type]');
+      if (!target) return;
+      const type = target.dataset.type;
+      const idx = parseInt(target.dataset.idx);
+
+      if (e.shiftKey) {
+        if (type === 'album-track') return;
+        e.preventDefault();
+        const rect = target.getBoundingClientRect();
+        drag = { type, idx, offsetX: e.clientX - (rect.left + rect.width/2), offsetY: e.clientY - (rect.top + rect.height/2) };
+        target.classList.add('dragging');
+        return;
+      }
+
+      if (type === 'button') {
+        const url = buttons[idx].url;
+        if (e.ctrlKey || e.metaKey) { window.open(url, '_blank'); return; }
+        window.location.href = url;
+      }
+    });
+
+    document.addEventListener('mousemove', e => {
+      if (!drag) return;
+      const cx = e.clientX - drag.offsetX;
+      const cy = e.clientY - drag.offsetY;
+      const arr = drag.type === 'button' ? buttons : drag.type === 'track' ? tracks : albums;
+      arr[drag.idx].x = cx / window.innerWidth * 100;
+      arr[drag.idx].y = cy / window.innerHeight * 100;
+      const el = document.querySelector('[data-type="' + drag.type + '"][data-idx="' + drag.idx + '"]');
+      if (el) { el.style.left = arr[drag.idx].x + '%'; el.style.top = arr[drag.idx].y + '%'; }
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (!drag) return;
+      const el = document.querySelector('[data-type="' + drag.type + '"][data-idx="' + drag.idx + '"]');
+      if (el) el.classList.remove('dragging');
+      drag = null;
+      save();
+    });
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'b' || e.key === 'B') { addButton(); e.preventDefault(); }
+      if (e.key === 'p' || e.key === 'P') { addTrack(); e.preventDefault(); }
+      if (e.key === 'a' || e.key === 'A') { addAlbum(); e.preventDefault(); }
+      if ((e.key === 'd' || e.key === 'D') && hoveredEl) {
+        delHovered(hoveredEl);
+        e.preventDefault();
+      }
+    });
+
+    function addButton() {
+      const text = prompt('Button text:') || 'New';
+      const hover = prompt('Hover text:') || 'Click';
+      const url = prompt('URL:') || '/';
+      const b = {
+        text, hover_text: hover, url, enabled: true,
+        x: Math.random() * 80 + 5,
+        y: Math.random() * 80 + 5
+      };
+      buttons.push(b);
+      renderAll();
+      save();
+    }
+
+    function addTrack() {
+      const displayName = prompt('Display name (e.g. Artist - Song):');
+      if (!displayName) return;
+      const filename = prompt('Filename (e.g. song.mp3):');
+      if (!filename) return;
+      const t = {
+        name: displayName, url: filename, loop: false,
+        x: Math.random() * 80 + 5,
+        y: Math.random() * 80 + 5
+      };
+      tracks.push(t);
+      renderAll();
+      save();
+    }
+
+    function addAlbum() {
+      const name = prompt('Album name:');
+      if (!name) return;
+      const imageURL = prompt('Image (URL or filename from images/ folder):');
+      if (!imageURL) return;
+      const a = {
+        name, image_url: imageURL, tracks: [],
+        x: Math.random() * 80 + 5,
+        y: Math.random() * 80 + 5
+      };
+      albums.push(a);
+      renderAll();
+      save();
+    }
+
+    function moveTrack(albumIdx, trackIdx, dir) {
+      const t = albums[albumIdx].tracks;
+      const ni = trackIdx + dir;
+      if (ni < 0 || ni >= t.length) return;
+      const [m] = t.splice(trackIdx, 1);
+      t.splice(ni, 0, m);
+      renderAll();
+      save();
+    }
+
+    function delHovered(el) {
+      const type = el.dataset.type;
+      const idx = parseInt(el.dataset.idx);
+      if (type === 'button') { buttons.splice(idx, 1); }
+      else if (type === 'track') { tracks.splice(idx, 1); }
+      else if (type === 'album') { albums.splice(idx, 1); }
+      else if (type === 'album-track') {
+        const ai = parseInt(el.dataset.albumIdx);
+        const ti = parseInt(el.dataset.ti);
+        if (albums[ai]) albums[ai].tracks.splice(ti, 1);
+      }
+      hoveredEl = null;
+      renderAll();
+      save();
+    }
+
+    renderAll();
+    {{else}}
+    function attachClicks() {
+      document.getElementById('container').addEventListener('click', e => {
+        const target = e.target.closest('[data-type]');
+        if (target && target.dataset.type === 'button') {
+          const url = buttons[parseInt(target.dataset.idx)].url;
+          if (e.ctrlKey || e.metaKey) { window.open(url, '_blank'); return; }
+          window.location.href = url;
+        }
+      });
+    }
+    renderAll();
+    attachClicks();
+    {{end}}
+
+    function save() {
+      fetch('/save-config?edit={{.EditSecret}}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: initialCfg.title,
+          bg_color: initialCfg.bg_color,
+          title_color: initialCfg.title_color,
+          buttons,
+          audio_tracks: tracks,
+          albums
+        })
+      }).then(r => {
+        if (!r.ok) r.text().then(t => alert('Save failed: ' + r.status + '\n' + t));
+      }).catch(() => alert('Save network error'));
+    }
+
+    const savedEmail = getCookie('email');
+    if (savedEmail) {
+      showBalance(savedEmail);
+      fetchBalance(savedEmail);
+    }
+
+    function getCookie(name) {
+      const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+      return match ? decodeURIComponent(match[2]) : null;
+    }
+
+    function setCookie(name, val) {
+      document.cookie = name + '=' + encodeURIComponent(val) + ';path=/;max-age=' + (365*24*60*60);
+    }
+
+    function sendMagicLink() {
+      const email = document.getElementById('email-input').value.trim();
+      if (!email || !email.includes('@')) return alert('Enter a valid email');
+      const btn = document.getElementById('magic-btn');
+      const status = document.getElementById('magic-status');
+      btn.disabled = true;
+      btn.textContent = 'Sending...';
+      fetch('/api/send-magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+        .then(r => r.json())
+        .then(d => {
+          if (d.ok) {
+            btn.textContent = 'Sent!';
+            status.textContent = 'Check your email for the magic link.';
+          } else {
+            alert(d.error || 'Error');
+            btn.disabled = false;
+            btn.textContent = 'Send Magic Link';
+          }
+        })
+        .catch(() => {
+          alert('Network error');
+          btn.disabled = false;
+          btn.textContent = 'Send Magic Link';
+        });
+    }
+
+    function showBalance(email) {
+      document.getElementById('balance-auth').style.display = 'none';
+      const display = document.getElementById('balance-display');
+      display.style.display = 'flex';
+      const el = document.getElementById('balance-email');
+      el.textContent = email + ' ✕';
+      el.title = 'Click to unset email';
+      el.style.cursor = 'pointer';
+      el.onclick = clearEmail;
+    }
+
+    function clearEmail() {
+      document.cookie = 'email=;path=/;max-age=0';
+      document.getElementById('balance-display').style.display = 'none';
+      document.getElementById('balance-auth').style.display = 'flex';
+      document.getElementById('email-input').value = '';
+      document.getElementById('seconds-info').textContent = '';
+      document.getElementById('balance-value').textContent = '';
+      const btn = document.getElementById('magic-btn');
+      btn.disabled = false;
+      btn.textContent = 'Send Magic Link';
+      document.getElementById('magic-status').textContent = '';
+    }
+
+    function fetchBalance(email) {
+      fetch('/api/balance?email=' + encodeURIComponent(email))
+        .then(r => r.json())
+        .then(d => {
+          latestServerSecs = d.seconds_listened;
+          document.getElementById('balance-value').textContent = d.balance;
+          document.getElementById('seconds-info').textContent = d.seconds_listened + ' seconds listened';
+        })
+        .catch(() => {});
+    }
+
+    function buyTokens() {
+      const email = getCookie('email');
+      if (!email) return alert('Set your email first');
+      fetch('/buy-tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+        .then(r => r.json())
+        .then(d => { if (d.url) window.location.href = d.url; else alert(d.error || 'Error'); })
+        .catch(() => alert('Failed to connect'));
+    }
+
+    const evtSource = new EventSource('/events');
+    evtSource.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        buttons = (data.buttons || []).slice();
+        tracks = (data.audio_tracks || []).slice();
+        albums = (data.albums || []).slice();
+        renderAll();
+      } catch(err) {}
+    };
+  </script>
+</body>
+</html>
